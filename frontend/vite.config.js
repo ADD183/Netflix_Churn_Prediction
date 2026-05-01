@@ -6,9 +6,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/predict': 'http://127.0.0.1:8002',
-      '/health': 'http://127.0.0.1:8002',
-      '/docs': 'http://127.0.0.1:8002'
+      '/predict': 'http://127.0.0.1:8000',
+      '/health': 'http://127.0.0.1:8000',
+      '/docs': 'http://127.0.0.1:8000'
     }
   }
 })

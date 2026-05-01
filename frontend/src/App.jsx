@@ -37,6 +37,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+  const [errors, setErrors] = useState({})
 
   const riskPercent = result ? Math.round(result.churn_probability * 100) : 0
 
@@ -50,13 +51,83 @@ function App() {
 
   const updateField = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }))
+    setErrors((e) => {
+      if (!e || !e[key]) return e
+      const next = { ...e }
+      delete next[key]
+      return next
+    })
+  }
+
+  function validateForm(values) {
+    const errs = {}
+
+    if (!Number.isInteger(Number(values.age)) || values.age < 1 || values.age > 100) {
+      errs.age = 'Age must be an integer between 1 and 100.'
+    }
+
+    if (!Number.isFinite(Number(values.monthly_fee)) || Number(values.monthly_fee) < 0) {
+      errs.monthly_fee = 'Monthly fee must be 0 or greater.'
+    }
+
+    if (!Number.isInteger(Number(values.account_age_months)) || Number(values.account_age_months) < 0) {
+      errs.account_age_months = 'Account age (months) must be 0 or greater.'
+    }
+
+    if (!Number.isInteger(Number(values.devices_used)) || Number(values.devices_used) < 1) {
+      errs.devices_used = 'Devices used must be 1 or more.'
+    }
+
+    if (!Number.isFinite(Number(values.avg_watch_time_minutes)) || Number(values.avg_watch_time_minutes) < 0) {
+      errs.avg_watch_time_minutes = 'Average watch time must be 0 or greater.'
+    }
+
+    if (!Number.isInteger(Number(values.watch_sessions_per_week)) || Number(values.watch_sessions_per_week) < 0) {
+      errs.watch_sessions_per_week = 'Watch sessions per week must be 0 or greater.'
+    }
+
+    if (!Number.isInteger(Number(values.binge_watch_sessions)) || Number(values.binge_watch_sessions) < 0) {
+      errs.binge_watch_sessions = 'Binge watch sessions must be 0 or greater.'
+    }
+
+    if (!Number.isFinite(Number(values.completion_rate)) || Number(values.completion_rate) < 0 || Number(values.completion_rate) > 100) {
+      errs.completion_rate = 'Completion rate must be between 0 and 100.'
+    }
+
+    if (!Number.isFinite(Number(values.rating_given)) || Number(values.rating_given) < 1 || Number(values.rating_given) > 5) {
+      errs.rating_given = 'Rating must be between 1 and 5.'
+    }
+
+    if (!Number.isInteger(Number(values.content_interactions)) || Number(values.content_interactions) < 0) {
+      errs.content_interactions = 'Content interactions must be 0 or greater.'
+    }
+
+    if (!Number.isFinite(Number(values.recommendation_click_rate)) || Number(values.recommendation_click_rate) < 0 || Number(values.recommendation_click_rate) > 100) {
+      errs.recommendation_click_rate = 'Recommendation click rate must be between 0 and 100.'
+    }
+
+    if (!Number.isInteger(Number(values.days_since_last_login)) || Number(values.days_since_last_login) < 0) {
+      errs.days_since_last_login = 'Days since last login must be 0 or greater.'
+    }
+
+    // Basic required checks for selects/strings
+    if (!values.gender) errs.gender = 'Please select a gender.'
+    if (!values.country) errs.country = 'Please select a country.'
+    if (!values.subscription_type) errs.subscription_type = 'Please select a subscription type.'
+
+    return errs
   }
 
   const submit = async (event) => {
     event.preventDefault()
     setLoading(true)
     setError('')
-
+    const validation = validateForm(form)
+    if (Object.keys(validation).length) {
+      setErrors(validation)
+      setLoading(false)
+      return
+    }
     try {
       const response = await fetch('/predict', {
         method: 'POST',
@@ -112,7 +183,7 @@ function App() {
 
               if (selectOptions[key]) {
                 return (
-                  <label className="field" key={key}>
+                  <label className={`field ${errors[key] ? 'error' : ''}`} key={key}>
                     <span>{labelize(key)}</span>
                     <select value={value} onChange={(e) => updateField(key, e.target.value)}>
                       {selectOptions[key].map((option) => (
@@ -121,13 +192,14 @@ function App() {
                         </option>
                       ))}
                     </select>
+                      {errors[key] ? <small className="error-text">{errors[key]}</small> : null}
                   </label>
                 )
               }
 
               const isDecimal = ['monthly_fee', 'rating_given', 'completion_rate', 'avg_watch_time_minutes', 'recommendation_click_rate'].includes(key)
-              return (
-                <label className="field" key={key}>
+                return (
+                <label className={`field ${errors[key] ? 'error' : ''}`} key={key}>
                   <span>{labelize(key)}</span>
                   <input
                     type="number"
@@ -136,6 +208,7 @@ function App() {
                     value={value}
                     onChange={(e) => updateField(key, isDecimal ? Number(e.target.value) : parseInt(e.target.value || '0', 10))}
                   />
+                  {errors[key] ? <small className="error-text">{errors[key]}</small> : null}
                 </label>
               )
             })}
@@ -196,28 +269,20 @@ function App() {
               </div>
 
               <div className="list-block">
-                <h3>Top contributing features</h3>
-                <ul>
-                  {(result.top_feature_labels || result.top_features || []).map((feature) => (
-                    <li key={feature}>{feature}</li>
-                  ))}
-                </ul>
-              </div>
+                <h3>Prediction Explanation</h3>
+                <p>
+                  {result.explanation}
+                </p>
 
-              {chartData.length ? (
-                <div className="chart-card">
-                  <h3>Feature importance</h3>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 20, bottom: 10, left: 90 }}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <XAxis type="number" />
-                      <YAxis type="category" dataKey="feature" width={120} tick={{ fontSize: 12 }} />
-                      <Tooltip />
-                      <Bar dataKey="importance" fill="#e50914" radius={[0, 8, 8, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : null}
+                <h4 style={{ marginTop: 12 }}>What this means</h4>
+                <p>
+                  {result.churn_prediction === 'Yes' ? (
+                    <>This result indicates the user is at high risk of churn — they are likely to cancel their subscription or stop using the service unless engagement improves.</>
+                  ) : (
+                    <>This result indicates the user is at low risk of churn — they are likely to retain their subscription and continue using the service.</>
+                  )}
+                </p>
+              </div>
             </>
           ) : (
             <div className="empty-state">

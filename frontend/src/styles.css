@@ -188,6 +188,76 @@ body {
   color: var(--muted);
 }
 
+.error-text {
+  color: #ffb4b4;
+  margin-top: 6px;
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Field-level error highlighting */
+.field.error {
+  position: relative;
+}
+
+.field.error input,
+.field.error select {
+  border-color: rgba(240, 68, 56, 0.9);
+  box-shadow: 0 0 0 4px rgba(240, 68, 56, 0.08);
+}
+
+.field.error .error-text {
+  color: #ff6b6b;
+  background: rgba(240,68,56,0.06);
+  padding: 6px 8px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+/* Small red badge at top-right of field (visual cue) */
+.field.error::after {
+  content: "!";
+  position: absolute;
+  right: 12px;
+  top: 8px;
+  background: rgba(240,68,56,0.95);
+  color: white;
+  font-size: 11px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+/* Force dropdowns and options to use dark theme so options remain visible */
+/* Make selects visually consistent with text inputs */
+.field select,
+select {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 14px;
+  padding-right: 40px; /* allow room for native arrow */
+  -webkit-appearance: menulist-button;
+  appearance: menulist-button;
+}
+
+/* Options: best-effort dark background (browser support varies) */
+.field select option,
+select option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+/* Focus state matches inputs */
+select:focus {
+  border-color: rgba(229, 9, 20, 0.7);
+  box-shadow: 0 0 0 4px rgba(229, 9, 20, 0.14);
+}
+
 .primary-button {
   width: 100%;
   margin-top: 18px;

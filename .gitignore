@@ -1,3 +1,25 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.env
+env/
+node_modules/
+dist/
+build/
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.sqlite3
+coverage/
+/.pytest_cache/
+*.egg-info/
+
+# Optional: ignore virtual environment created by VS Code
+/.venv/
 __pycache__/
 backend/model.pkl
 backend/encoder.pkl

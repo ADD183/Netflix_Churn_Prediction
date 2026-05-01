@@ -18,3 +18,18 @@ button:hover{transform:translateY(-1px)}
 #result{margin-top:16px;padding:12px;border-radius:8px;background:rgba(255,255,255,0.02)}
 #top-features{margin-top:8px}
 @media(max-width:720px){form{grid-template-columns:1fr} }
+
+/* Dark dropdowns for native selects */
+/* Make select match form inputs and page panels */
+select{
+  background: rgba(255,255,255,0.02);
+  color: #e6eef6;
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,0.06);
+  padding:8px 10px;
+  padding-right:32px;
+}
+select option{
+  background: #071227;
+  color: #e6eef6;
+}
