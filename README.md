@@ -46,6 +46,12 @@ npm run dev
 
 Then open the Vite URL shown in the terminal, usually `http://localhost:5173/`.
 
+## Deployment
+
+The frontend is configured for Vercel from the repository root. Import the repository into Vercel and use the committed `vercel.json`; it builds `frontend/` and publishes `frontend/dist`.
+
+Deploy the FastAPI service separately on Render using the committed `render.yaml`. After the API is live, add `VITE_API_URL` to the Vercel project environment variables with the API URL, for example `https://your-api.onrender.com`.
+
 If you want the backend to serve the frontend in production, build the app first:
 
 ```bash

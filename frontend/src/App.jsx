@@ -67,6 +67,8 @@ const sliderConfig = {
   days_since_last_login: { min: 0, max: 90, step: 1, suffix: ' days' },
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+
 function App() {
   const [form, setForm] = useState(initialForm)
   const [loading, setLoading] = useState(false)
@@ -174,7 +176,7 @@ function App() {
     }
     try {
       const request = { ...form, threshold: 0.5 }
-      const response = await fetch('/predict', {
+      const response = await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
