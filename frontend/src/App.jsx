@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react'
-import { BarChart, Bar, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useState } from 'react'
 
 const initialForm = {
   age: 30,
@@ -26,10 +25,46 @@ const initialForm = {
 const selectOptions = {
   gender: ['Male', 'Female', 'Other'],
   country: ['USA', 'India', 'UK', 'Canada', 'Brazil', 'France', 'Japan', 'Germany', 'Spain'],
-  subscription_type: ['Basic', 'Standard', 'Premium'],
   payment_method: ['PayPal', 'Credit Card', 'Debit Card', 'UPI'],
   primary_device: ['Mobile', 'Tablet', 'Laptop', 'Smart TV'],
   favorite_genre: ['Documentary', 'Comedy', 'Action', 'Romance', 'Thriller', 'Sci-Fi', 'Drama', 'Horror'],
+}
+
+const plans = [
+  { id: 'mobile', label: 'Mobile', price: 6.99, detail: '1 screen · HD', backend: 'Basic' },
+  { id: 'basic', label: 'Basic', price: 17.99, detail: '1 screen · Full HD', backend: 'Basic' },
+  { id: 'standard', label: 'Standard', price: 22.99, detail: '2 screens · Full HD', backend: 'Standard' },
+  { id: 'premium', label: 'Premium', price: 26.99, detail: '4 screens · 4K + HDR', backend: 'Premium' },
+]
+
+const sections = [
+  {
+    id: 'profile',
+    title: 'Customer profile',
+    description: 'Basic account context helps us benchmark this member fairly.',
+    fields: ['age', 'gender', 'country', 'account_age_months', 'payment_method'],
+  },
+  {
+    id: 'engagement',
+    title: 'Viewing habits',
+    description: 'Recent activity and content preferences shape the health signal.',
+    fields: ['favorite_genre', 'avg_watch_time_minutes', 'watch_sessions_per_week', 'binge_watch_sessions'],
+  },
+  {
+    id: 'satisfaction',
+    title: 'Member signals',
+    description: 'A few lightweight signals complete the account review.',
+    fields: ['completion_rate', 'rating_given', 'content_interactions', 'recommendation_click_rate', 'days_since_last_login'],
+  },
+]
+
+const sliderConfig = {
+  account_age_months: { min: 0, max: 120, step: 1, suffix: ' months' },
+  avg_watch_time_minutes: { min: 0, max: 360, step: 5, suffix: ' min' },
+  watch_sessions_per_week: { min: 0, max: 30, step: 1, suffix: ' / week' },
+  completion_rate: { min: 0, max: 100, step: 1, suffix: '%' },
+  recommendation_click_rate: { min: 0, max: 100, step: 1, suffix: '%' },
+  days_since_last_login: { min: 0, max: 90, step: 1, suffix: ' days' },
 }
 
 function App() {
@@ -38,16 +73,12 @@ function App() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const [errors, setErrors] = useState({})
+  const [planId, setPlanId] = useState('standard')
+  const [extras, setExtras] = useState({ extraMemberSlots: false, ultraHd: false })
 
   const riskPercent = result ? Math.round(result.churn_probability * 100) : 0
-
-  const chartData = useMemo(() => {
-    if (!result?.feature_importances?.length) return []
-    return result.feature_importances.slice(0, 6).map((item) => ({
-      feature: item.feature.replace(/^(num__|cat__)/, '').replaceAll('_', ' '),
-      importance: Number(item.importance.toFixed(4)),
-    }))
-  }, [result])
+  const previewPercent = calculatePreviewRisk(form)
+  const riskLevel = result?.churn_prediction === 'Yes' ? 'Needs attention' : 'Healthy account'
 
   const updateField = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -57,6 +88,19 @@ function App() {
       delete next[key]
       return next
     })
+  }
+
+  const updatePlan = (nextPlanId) => {
+    const plan = plans.find((item) => item.id === nextPlanId)
+    setPlanId(nextPlanId)
+    updateField('subscription_type', plan.backend)
+    updateField('monthly_fee', plan.price)
+  }
+
+  const updateExtra = (key, enabled) => {
+    setExtras((current) => ({ ...current, [key]: enabled }))
+    if (key === 'extraMemberSlots') updateField('devices_used', enabled ? 2 : 1)
+    if (key === 'ultraHd') updateField('primary_device', enabled ? 'Smart TV' : 'Laptop')
   }
 
   function validateForm(values) {
@@ -129,10 +173,11 @@ function App() {
       return
     }
     try {
+      const request = { ...form, threshold: 0.5 }
       const response = await fetch('/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(request),
       })
 
       if (!response.ok) {
@@ -151,148 +196,154 @@ function App() {
 
   return (
     <div className="page-shell">
-      <div className="glow glow-left" />
-      <div className="glow glow-right" />
+      <header className="topbar">
+        <a className="brand" href="/" aria-label="Northstar home"><span className="brand-mark">N</span> northstar</a>
+        <div className="topbar-meta"><span className="status-dot" /> Retention workspace <span className="topbar-divider" /> <span>Updated just now</span></div>
+      </header>
 
       <header className="hero">
-        <div>
-          <p className="eyebrow">Netflix Churn Prediction</p>
-          <h1>Predict churn risk with a polished analytics dashboard.</h1>
-          <p className="hero-copy">
-            Enter user behavior signals, get a churn probability, and see the top drivers behind the result.
-          </p>
-        </div>
-
-        <div className="hero-card">
-          <span className="hero-card-label">Model status</span>
-          <strong>RandomForest + SMOTE</strong>
-          <span>FastAPI backend, live prediction, feature importance, and threshold control.</span>
-        </div>
+        <div className="hero-kicker"><span className="kicker-line" /> Account health</div>
+        <h1>Know who needs a reason to stay.</h1>
+        <p className="hero-copy">Review a member’s account signals and get a clear next step before their next billing moment.</p>
       </header>
 
       <main className="layout">
         <form className="panel form-panel" onSubmit={submit}>
           <div className="panel-header">
-            <h2>Input Profile</h2>
-            <p>All fields are validated in the browser and again by the API.</p>
+            <div>
+              <span className="section-number">01</span>
+              <h2>Review an account</h2>
+            </div>
+            <p>Use the latest known member details for the most useful assessment.</p>
           </div>
 
-          <div className="grid">
-            {Object.entries(form).map(([key, value]) => {
-              if (key === 'threshold') return null
+          {sections.map((section, index) => (
+            <fieldset className="form-section" key={section.id}>
+              <legend><span>{String(index + 1).padStart(2, '0')}</span> {section.title}</legend>
+              <p className="section-description">{section.description}</p>
+              {section.id === 'profile' ? <PlanSelector planId={planId} onChange={updatePlan} /> : null}
+              {section.id === 'engagement' ? <div className="toggle-grid"><Toggle label="Extra member slots" detail="Share the account with another viewer" checked={extras.extraMemberSlots} onChange={(value) => updateExtra('extraMemberSlots', value)} /><Toggle label="4K streaming available" detail="Premium picture quality is enabled" checked={extras.ultraHd} onChange={(value) => updateExtra('ultraHd', value)} /></div> : null}
+              <div className="grid">
+                {section.fields.map((key) => renderField(key, form[key], errors[key], updateField))}
+              </div>
+            </fieldset>
+          ))}
 
-              if (selectOptions[key]) {
-                return (
-                  <label className={`field ${errors[key] ? 'error' : ''}`} key={key}>
-                    <span>{labelize(key)}</span>
-                    <select value={value} onChange={(e) => updateField(key, e.target.value)}>
-                      {selectOptions[key].map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                      {errors[key] ? <small className="error-text">{errors[key]}</small> : null}
-                  </label>
-                )
-              }
-
-              const isDecimal = ['monthly_fee', 'rating_given', 'completion_rate', 'avg_watch_time_minutes', 'recommendation_click_rate'].includes(key)
-                return (
-                <label className={`field ${errors[key] ? 'error' : ''}`} key={key}>
-                  <span>{labelize(key)}</span>
-                  <input
-                    type="number"
-                    step={isDecimal ? '0.01' : '1'}
-                    min="0"
-                    value={value}
-                    onChange={(e) => updateField(key, isDecimal ? Number(e.target.value) : parseInt(e.target.value || '0', 10))}
-                  />
-                  {errors[key] ? <small className="error-text">{errors[key]}</small> : null}
-                </label>
-              )
-            })}
-
-            <label className="field full-width">
-              <span>Threshold</span>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={form.threshold}
-                onChange={(e) => updateField('threshold', Number(e.target.value))}
-              />
-              <small>{form.threshold.toFixed(2)}</small>
-            </label>
+          <div className="form-actions">
+            <button className="primary-button" type="submit" disabled={loading}>
+              {loading ? <><span className="loader" aria-hidden="true" /> Reading signals...</> : <>Assess account health <span aria-hidden="true">→</span></>}
+            </button>
+            <button className="text-button" type="button" onClick={() => { setForm(initialForm); setPlanId('standard'); setExtras({ extraMemberSlots: false, ultraHd: false }); setResult(null); setErrors({}); setError('') }}>Clear form</button>
           </div>
-
-          <button className="primary-button" type="submit" disabled={loading}>
-            {loading ? 'Predicting...' : 'Predict Churn Risk'}
-          </button>
 
           {error ? <div className="error-box">{error}</div> : null}
         </form>
 
         <section className="panel result-panel">
           <div className="panel-header">
-            <h2>Prediction Output</h2>
-            <p>Probability, risk badge, and the strongest signals.</p>
+            <div>
+              <span className="section-number">02</span>
+              <h2>Account health</h2>
+            </div>
+            <p>Your review will appear here with an actionable readout.</p>
           </div>
 
           {result ? (
             <>
-              <div className={`badge ${result.churn_prediction === 'Yes' ? 'danger' : 'safe'}`}>
-                {result.churn_prediction === 'Yes' ? 'High Risk 🚨' : 'Low Risk ✅'}
+              <div className={`health-heading ${result.churn_prediction === 'Yes' ? 'danger' : 'safe'}`}>
+                <span className="health-icon" aria-hidden="true">{result.churn_prediction === 'Yes' ? '!' : '✓'}</span>
+                <div><span className="overline">Current readout</span><h3>{riskLevel}</h3></div>
               </div>
 
               <div className="probability-card">
                 <div className="probability-header">
-                  <span>Churn probability</span>
+                  <span>Likelihood of cancellation</span>
                   <strong>{riskPercent}%</strong>
                 </div>
                 <div className="progress-track">
-                  <div className="progress-fill" style={{ width: `${riskPercent}%` }} />
+                  <div className={`progress-fill ${result.churn_prediction === 'Yes' ? 'danger' : 'safe'}`} style={{ width: `${riskPercent}%` }} />
                 </div>
-                <p className="result-summary">{result.explanation}</p>
+                <p className="result-summary">{result.explanation.includes('model prediction') ? 'This account’s current activity pattern is being compared with healthy member behavior.' : result.explanation}</p>
               </div>
 
               <div className="result-grid">
                 <div className="metric-card">
-                  <span>Prediction</span>
-                  <strong>{result.churn_prediction}</strong>
+                  <span>Recommended timing</span>
+                  <strong>{result.churn_prediction === 'Yes' ? 'Before next renewal' : 'Keep engaged'}</strong>
                 </div>
                 <div className="metric-card">
-                  <span>Threshold</span>
-                  <strong>{Number(result.threshold).toFixed(2)}</strong>
+                  <span>Confidence signal</span>
+                  <strong>{riskPercent >= 70 || riskPercent <= 30 ? 'Clear' : 'Moderate'}</strong>
                 </div>
               </div>
 
               <div className="list-block">
-                <h3>Prediction Explanation</h3>
-                <p>
-                  {result.explanation}
-                </p>
-
-                <h4 style={{ marginTop: 12 }}>What this means</h4>
-                <p>
-                  {result.churn_prediction === 'Yes' ? (
-                    <>This result indicates the user is at high risk of churn — they are likely to cancel their subscription or stop using the service unless engagement improves.</>
-                  ) : (
-                    <>This result indicates the user is at low risk of churn — they are likely to retain their subscription and continue using the service.</>
-                  )}
-                </p>
+                <h3>Suggested next step</h3>
+                <p>{result.churn_prediction === 'Yes' ? 'Reach out with a relevant title or a helpful plan reminder. A timely, personal nudge can bring this account back into a healthy rhythm.' : 'No intervention is needed right now. Keep this member in your regular engagement journey and watch for changes in activity.'}</p>
+                {result.top_feature_labels?.length ? <div className="signal-row"><span>Signals considered</span><strong>{result.top_feature_labels.slice(0, 3).map(friendlySignal).join(' · ')}</strong></div> : null}
               </div>
             </>
           ) : (
             <div className="empty-state">
-              <p>Run a prediction to view the churn probability and explanation here.</p>
+              <span className="empty-mark">+</span>
+              <span className="overline">Live preview</span>
+              <strong className={previewPercent >= 55 ? 'preview-risk' : ''}>{previewPercent}% likelihood to cancel</strong>
+              <div className="preview-track"><div className={previewPercent >= 55 ? 'preview-fill preview-risk-fill' : 'preview-fill'} style={{ width: `${previewPercent}%` }} /></div>
+              <p>Adjust the viewing signals to explore how activity changes the account health. Run the assessment for the final readout.</p>
             </div>
           )}
         </section>
       </main>
     </div>
   )
+}
+
+function renderField(key, value, error, updateField) {
+  if (selectOptions[key]) {
+    return <label className={`field ${error ? 'error' : ''}`} key={key}>
+      <span>{labelize(key)}</span>
+      <select value={value} onChange={(e) => updateField(key, e.target.value)}>{selectOptions[key].map((option) => <option key={option} value={option}>{option}</option>)}</select>
+      {error ? <small className="error-text">{error}</small> : null}
+    </label>
+  }
+  if (sliderConfig[key]) {
+    const config = sliderConfig[key]
+    return <label className={`field slider-field ${error ? 'error' : ''}`} key={key}>
+      <span><span>{labelize(key)}</span><strong>{value}{config.suffix}</strong></span>
+      <input type="range" min={config.min} max={config.max} step={config.step} value={value} aria-label={labelize(key)} onChange={(e) => updateField(key, Number(e.target.value))} />
+      {error ? <small className="error-text">{error}</small> : null}
+    </label>
+  }
+  const isDecimal = ['monthly_fee', 'rating_given', 'completion_rate', 'avg_watch_time_minutes', 'recommendation_click_rate'].includes(key)
+  return <label className={`field ${error ? 'error' : ''}`} key={key}>
+    <span>{labelize(key)}</span>
+    <input type="number" step={isDecimal ? '0.01' : '1'} min="0" value={value} onChange={(e) => updateField(key, isDecimal ? Number(e.target.value) : parseInt(e.target.value || '0', 10))} />
+    {error ? <small className="error-text">{error}</small> : null}
+  </label>
+}
+
+
+function PlanSelector({ planId, onChange }) {
+  return <div className="plan-selector" aria-label="Netflix plan">
+    <div className="plan-selector-heading"><span>Netflix plan</span><small>Price is applied automatically</small></div>
+    <div className="plan-grid">{plans.map((plan) => <button className={`plan-card ${plan.id === planId ? 'selected' : ''}`} type="button" key={plan.id} onClick={() => onChange(plan.id)} aria-pressed={plan.id === planId}><span className="plan-radio" /><strong>{plan.label}</strong><b>${plan.price.toFixed(2)}<small>/mo</small></b><em>{plan.detail}</em></button>)}</div>
+  </div>
+}
+
+function Toggle({ label, detail, checked, onChange }) {
+  return <label className={`toggle-card ${checked ? 'active' : ''}`}><span><strong>{label}</strong><small>{detail}</small></span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /><span className="toggle-track"><span /></span></label>
+}
+function calculatePreviewRisk(values) {
+  const inactivity = Math.min(Number(values.days_since_last_login) / 90, 1) * 42
+  const watchTime = (1 - Math.min(Number(values.avg_watch_time_minutes) / 360, 1)) * 22
+  const sessions = (1 - Math.min(Number(values.watch_sessions_per_week) / 30, 1)) * 18
+  const completion = (1 - Number(values.completion_rate) / 100) * 12
+  const interaction = (1 - Math.min(Number(values.recommendation_click_rate) / 100, 1)) * 6
+  return Math.round(Math.min(96, Math.max(4, inactivity + watchTime + sessions + completion + interaction)))
+}
+
+function friendlySignal(value) {
+  return value.replace('Avg Watch Time Minutes', 'Watch time').replace('Recommendation Click Rate', 'Recommendations').replace('Completion Rate', 'Completion')
 }
 
 function labelize(value) {
