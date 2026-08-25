@@ -21,8 +21,6 @@ coverage/
 # Optional: ignore virtual environment created by VS Code
 /.venv/
 __pycache__/
-backend/model.pkl
-backend/encoder.pkl
 training/data/
 *.pyc
 env/
