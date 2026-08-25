@@ -1,8 +1,6 @@
 from pathlib import Path
 import os
 import joblib
-import pandas as pd
-import numpy as np
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -12,9 +10,10 @@ from fastapi.responses import FileResponse
 from typing import Optional, List, Dict, Any
 
 
-APP_DIR = Path(__file__).parent
-MODEL_PATH = APP_DIR / "model.pkl"
-ENCODER_PATH = APP_DIR / "encoder.pkl"
+# Resolve artifacts relative to this file so startup works from any working directory.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
+ENCODER_PATH = os.path.join(BASE_DIR, "encoder.pkl")
 
 app = FastAPI(title="Netflix Churn Prediction API")
 
@@ -60,15 +59,19 @@ class PredictionRequest(UserInput):
 
 
 model = None
+encoder = None
 preprocessor = None
 classifier = None
 
 
 def load_artifacts():
-    global model, preprocessor, classifier
-    if not MODEL_PATH.exists():
+    global model, encoder, preprocessor, classifier
+    if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(f"Model file not found at {MODEL_PATH}. Run the training script first.")
+    if not os.path.exists(ENCODER_PATH):
+        raise FileNotFoundError(f"Encoder file not found at {ENCODER_PATH}. Run the training script first.")
     model = joblib.load(MODEL_PATH)
+    encoder = joblib.load(ENCODER_PATH)
     # model is expected to be an imblearn Pipeline with named_steps
     try:
         preprocessor = model.named_steps.get("preprocessor")
@@ -136,7 +139,7 @@ def explain_reason(top_features: List[str], user_values: Dict[str, Any], predict
 
 @app.get("/health")
 def health():
-    ok = MODEL_PATH.exists()
+    ok = os.path.exists(MODEL_PATH) and os.path.exists(ENCODER_PATH)
     return {"status": "ok" if ok else "model_missing", "model_path": str(MODEL_PATH)}
 
 
@@ -146,6 +149,8 @@ def predict(req: PredictionRequest):
         raise HTTPException(status_code=503, detail="Model is not loaded. Run training script to generate model.pkl")
 
     # Build dataframe
+    import pandas as pd
+
     data = pd.DataFrame([req.dict(exclude={"threshold"})])
 
     try:

@@ -14,9 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
-
-from imblearn.over_sampling import SMOTE
-from imblearn.pipeline import Pipeline as ImbPipeline
+from sklearn.pipeline import Pipeline
 
 
 # Prefer dataset placed under backend/data/ if present (user provided)
@@ -67,11 +65,16 @@ def build_pipeline(df: pd.DataFrame, target_col: str = "churned"):
         remainder="drop",
     )
 
-    clf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
+    clf = RandomForestClassifier(
+        n_estimators=50,
+        max_depth=12,
+        random_state=42,
+        n_jobs=1,
+        class_weight="balanced",
+    )
 
-    pipeline = ImbPipeline(steps=[
+    pipeline = Pipeline(steps=[
         ("preprocessor", preprocessor),
-        ("smote", SMOTE(random_state=42)),
         ("classifier", clf),
     ])
 
